@@ -1,0 +1,16 @@
+# Build output and local dependencies
+dist/
+node_modules/
+.vercel/
+
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+
+# Local logs and editor/OS files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
