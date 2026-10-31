@@ -21,11 +21,17 @@ document.querySelector('#year').textContent = new Date().getFullYear();
 // Add confirmed profiles and activities here. Keep image paths relative to vyra-site/.
 // Team images must be genuine, approved portraits; journey images must document confirmed work.
 const TEAM_MEMBERS = [
-  // { name: 'Confirmed name', role: 'Confirmed role', description: 'Confirmed contribution', image: 'assets/team/member.jpg' },
+  { name: 'Kavya' },
+  { name: 'Neeha' },
+  { name: 'Lokagna' },
+  // Complete each profile with a confirmed role, contribution and real portrait before publishing.
+  // { name: 'Name', role: 'Confirmed role', description: 'Confirmed contribution', image: 'assets/team/member.jpg' },
 ];
 const JOURNEY_ACTIVITIES = [
   // { title: 'Confirmed activity', description: 'What the team did', image: 'assets/journey/activity.jpg', stage: 'Optional date or stage', members: ['Optional confirmed names'] },
 ];
+// Leave empty until a real, secure form endpoint is configured. Never put secrets here.
+const CONTACT_FORM_ENDPOINT = '';
 
 const isLocalDevelopment = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const showContentPlaceholders = isLocalDevelopment && new URLSearchParams(window.location.search).get('content-preview') === 'development';
@@ -51,12 +57,13 @@ teamGrid.innerHTML = teamProfiles.map((member, index) => `
     <div class="team-portrait"><img src="${escapeHTML(member.image)}" alt="Portrait of ${escapeHTML(member.name)}" loading="lazy"></div>
     <div class="team-card-copy"><p class="team-role">${escapeHTML(member.role)}</p><h3>${escapeHTML(member.name)}</h3><p>${escapeHTML(member.description)}</p></div>
   </article>`).join('');
-if (showContentPlaceholders && !teamProfiles.length) {
-  teamGrid.innerHTML = Array.from({ length: 3 }, (_, index) => `
-    <article class="team-card team-placeholder reveal" style="--card-index:${index}">
-      <div class="team-placeholder-art"><span>Portrait photo<br>goes here</span><small>DEVELOPMENT PLACEHOLDER</small></div>
-      <div class="team-card-copy"><p class="team-role">Editable role</p><h3>Confirmed name</h3><p>Add a verified name, role, short contribution and real portrait in TEAM_MEMBERS.</p></div>
-    </article>`).join('');
+if (showContentPlaceholders) {
+  const pendingProfiles = TEAM_MEMBERS.filter((member) => !teamProfiles.includes(member));
+  teamGrid.insertAdjacentHTML('beforeend', pendingProfiles.map((member, index) => `
+    <article class="team-card team-placeholder reveal" style="--card-index:${teamProfiles.length + index}">
+      <div class="team-placeholder-art"><span>Real portrait<br>photo goes here</span><small>DEVELOPMENT PLACEHOLDER</small></div>
+      <div class="team-card-copy"><p class="team-role">Role to confirm</p><h3>${escapeHTML(member.name || 'Name to confirm')}</h3><p>Add the confirmed role, contribution and approved real portrait in TEAM_MEMBERS.</p></div>
+    </article>`).join(''));
 }
 
 const journeyItems = JOURNEY_ACTIVITIES.filter((activity) => activity.title && activity.description && validImagePath(activity.image));
@@ -108,7 +115,35 @@ if (reduceMotion || !('IntersectionObserver' in window)) {
   revealItems.forEach((item) => observer.observe(item));
 }
 
-document.querySelector('#contact-form').addEventListener('submit', (event) => {
+const contactForm = document.querySelector('#contact-form');
+const contactSubmit = contactForm.querySelector('[type="submit"]');
+const contactStatus = document.querySelector('.form-status');
+contactSubmit.disabled = !CONTACT_FORM_ENDPOINT;
+if (!CONTACT_FORM_ENDPOINT) {
+  contactSubmit.textContent = 'Contact form setup needed';
+  contactSubmit.setAttribute('aria-describedby', 'form-note');
+}
+contactForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  document.querySelector('.form-status').textContent = 'Thanks for sharing. Connect this form to an email service or secure endpoint to receive messages.';
+  if (!CONTACT_FORM_ENDPOINT) {
+    contactStatus.textContent = 'Messages cannot be sent yet. Configure a secure form endpoint before enabling this form.';
+    return;
+  }
+
+  contactSubmit.disabled = true;
+  contactStatus.textContent = 'Sending your message…';
+  try {
+    const response = await fetch(CONTACT_FORM_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(new FormData(contactForm))),
+    });
+    if (!response.ok) throw new Error(`Form endpoint returned ${response.status}`);
+    contactForm.reset();
+    contactStatus.textContent = 'Your message was sent. Thank you for getting in touch.';
+  } catch {
+    contactStatus.textContent = 'Your message could not be sent. Please try again later.';
+  } finally {
+    contactSubmit.disabled = false;
+  }
 });
